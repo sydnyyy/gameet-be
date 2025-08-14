@@ -1,11 +1,11 @@
 package com.gameet.notification.service;
 
 import com.gameet.common.util.Map2JsonSerializer;
+import com.gameet.global.config.aws.AwsSesProperties;
 import com.gameet.notification.dto.TemplatedEmailRequest;
 import com.gameet.notification.enums.AwsSesTemplateType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 import software.amazon.awssdk.services.sesv2.model.*;
@@ -19,8 +19,7 @@ import java.util.Map;
 @Slf4j
 public class AwsSesEmailNotifier {
 
-    @Value("${spring.mail.username}")
-    private String fromEmailAddress;
+    private final AwsSesProperties awsSesProperties;
 
     private final SesV2Client sesV2Client;
     private final Map2JsonSerializer jsonSerializer;
@@ -30,7 +29,7 @@ public class AwsSesEmailNotifier {
             SendEmailRequest emailRequest = SendEmailRequest.builder()
                     .destination(getDestination(templatedEmailRequest.toEmail()))
                     .content(getEmailContent(templatedEmailRequest.awsSesTemplateType(), templatedEmailRequest.templateData()))
-                    .fromEmailAddress(fromEmailAddress)
+                    .fromEmailAddress(awsSesProperties.fromEmailAddress())
                     .build();
 
             sesV2Client.sendEmail(emailRequest);
@@ -68,7 +67,7 @@ public class AwsSesEmailNotifier {
             SendBulkEmailRequest bulkEmailRequest = SendBulkEmailRequest.builder()
                     .defaultContent(defaultBulkEmailContent)
                     .bulkEmailEntries(bulkEmailEntries)
-                    .fromEmailAddress(fromEmailAddress)
+                    .fromEmailAddress(awsSesProperties.fromEmailAddress())
                     .build();
 
             sesV2Client.sendBulkEmail(bulkEmailRequest);

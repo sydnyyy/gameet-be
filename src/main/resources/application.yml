@@ -22,8 +22,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${JAVA_MAIL_USERNAME}
+    password: ${JAVA_MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -42,6 +42,7 @@ aws:
     access_key: ${AWS_SES_ACCESS_KEY}
     secret_key: ${AWS_SES_SECRET_KEY}
     region: ${AWS_SES_REGION}
+    from_email_address: ${AWS_SES_FROM_EMAIL_ADDRESS}
 
 logging:
   level:

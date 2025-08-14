@@ -12,18 +12,18 @@ import software.amazon.awssdk.services.sesv2.SesV2Client;
 @RequiredArgsConstructor
 public class AwsConfig {
 
-    private final AwsProperties awsProperties;
+    private final AwsSesProperties awsSesProperties;
 
     @Bean
     public SesV2Client sesV2Client() {
         AwsBasicCredentials credentials = AwsBasicCredentials.create(
-                awsProperties.getAccessKey(),
-                awsProperties.getSecretKey()
+                awsSesProperties.accessKey(),
+                awsSesProperties.secretKey()
         );
 
         return SesV2Client.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .region(Region.of(awsProperties.getRegion()))
+                .region(Region.of(awsSesProperties.region()))
                 .build();
     }
 }
