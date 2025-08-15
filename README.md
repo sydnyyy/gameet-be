@@ -11,7 +11,7 @@ Gameet는 선호하는 게임 장르와 스타일이 맞는 게이머를 실시�
 - Spring Boot (Security, WebSocket): JWT 기반 인증/인가 처리 및 실시간 매칭, 채팅 기능 구현
 - MySQL: 매칭 완료 데이터 및 사용자 정보 관리
 - Redis: 인증 코드 및 매칭 처리 데이터 관리
-- AWS SES: 알림 이메일 발송
+- AWS SES + JavaMailSender: 알림 이메일 발송
 
 <br>
 
@@ -24,7 +24,7 @@ Gameet는 선호하는 게임 장르와 스타일이 맞는 게이머를 실시�
 - 그 결과, 같은 브라우저 탭에서 **기존 연결 해제 없이 WebSocket 중복 연결 발생**
 
 ✅ 해결
-- 정책: 브라우저 탭마다 WebSocket 세션 1개만 연결 가능
+- 정책: 브라우저 탭 기준 WebSocket 세션 1개만 연결 가능
 - 방법: 자체 세션 저장소 생성 및 HandshakeInterceptor 단계에서 중복 세션 감지 시 연결 거부
 
 ### 이메일 알림 지연
