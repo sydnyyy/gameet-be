@@ -1,7 +1,7 @@
 package com.gameet.global.jwt;
 
+import com.gameet.global.exception.JwtAuthenticationException;
 import com.gameet.user.enums.Role;
-import com.gameet.global.exception.CustomException;
 import com.gameet.global.exception.ErrorCode;
 import io.jsonwebtoken.*;
 import jakarta.servlet.http.Cookie;
@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
 import java.util.Date;
 
 @Component
@@ -42,11 +41,11 @@ public class JwtUtil {
 
     private String generateToken(Long userId, Role role, long expirationTime) {
         if (userId == null) {
-            throw new CustomException(ErrorCode.USER_ID_REQUIRED);
+            throw new JwtAuthenticationException(ErrorCode.USER_ID_REQUIRED);
         }
 
         if (role == null) {
-            throw new CustomException(ErrorCode.ROLE_REQUIRED);
+            throw new JwtAuthenticationException(ErrorCode.ROLE_REQUIRED);
         }
 
         return Jwts.builder()
@@ -90,9 +89,9 @@ public class JwtUtil {
             Claims claims = getClaims(token);
             return claims.get("userId", Long.class);
         } catch (ExpiredJwtException e) {
-            throw new CustomException(ErrorCode.TOKEN_EXPIRED);
+            throw new JwtAuthenticationException(ErrorCode.TOKEN_EXPIRED);
         } catch (JwtException e) {
-            throw new CustomException(ErrorCode.JWT_PROCESSING_FAILED);
+            throw new JwtAuthenticationException(ErrorCode.JWT_PROCESSING_FAILED);
         }
     }
 
@@ -102,9 +101,9 @@ public class JwtUtil {
             String roleString = claims.get("role", String.class);
             return Role.from(roleString);
         } catch (ExpiredJwtException e) {
-            throw new CustomException(ErrorCode.TOKEN_EXPIRED);
+            throw new JwtAuthenticationException(ErrorCode.TOKEN_EXPIRED);
         } catch (JwtException e) {
-            throw new CustomException(ErrorCode.JWT_PROCESSING_FAILED);
+            throw new JwtAuthenticationException(ErrorCode.JWT_PROCESSING_FAILED);
         }
     }
 

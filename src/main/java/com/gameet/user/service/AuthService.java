@@ -2,6 +2,7 @@ package com.gameet.user.service;
 
 import com.gameet.common.enums.EmailPurpose;
 import com.gameet.global.config.websocket.manager.WebSocketSessionCoordinator;
+import com.gameet.global.exception.JwtAuthenticationException;
 import com.gameet.notification.dto.TemplatedEmailRequest;
 import com.gameet.notification.enums.AwsSesTemplateType;
 import com.gameet.notification.service.AwsSesEmailNotifier;
@@ -114,7 +115,7 @@ public class AuthService {
     public void reissueAccessToken(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
         String refreshToken = jwtUtil.getRefreshToken(httpServletRequest);
         if (!jwtUtil.validateToken(refreshToken)) {
-            throw new CustomException(ErrorCode.REFRESH_TOKEN_EXPIRED);
+            throw new JwtAuthenticationException(ErrorCode.REFRESH_TOKEN_EXPIRED);
         }
 
         Long userId = jwtUtil.getUserIdFromToken(refreshToken);
@@ -122,7 +123,7 @@ public class AuthService {
 
         boolean isValid = refreshTokenRepository.isValidRefreshToken(userId, refreshToken);
         if (!isValid) {
-            throw new CustomException(ErrorCode.REFRESH_TOKEN_EXPIRED);
+            throw new JwtAuthenticationException(ErrorCode.REFRESH_TOKEN_EXPIRED);
         }
 
         String newAccessToken = jwtUtil.generateAccessToken(userId, role);
