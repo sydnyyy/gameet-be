@@ -23,6 +23,7 @@ public class WebSocketAuthHandshakeInterceptor implements HandshakeInterceptor {
     public static final String WEBSOCKET_TOKEN_KEY = "websocket_token";
     public static final String CLIENT_ID_KEY = "client_id";
     public static final String USER_ID_KEY = "user_id";
+    public static final String TAB_ID_KEY = "tab_id";
 
     private final JwtUtil jwtUtil;
     private final WebSocketSessionCoordinator webSocketSessionCoordinator;
@@ -34,39 +35,43 @@ public class WebSocketAuthHandshakeInterceptor implements HandshakeInterceptor {
                                    @NonNull Map<String, Object> attributes) throws Exception {
 
         String tabWebSocketToken = getWebSocketToken(request);
-        String clientId = getClientId(request);
-        Long userId = jwtUtil.getUserIdFromToken(tabWebSocketToken);
-
         if (tabWebSocketToken == null || tabWebSocketToken.isBlank()) {
-            log.warn("[beforeHandshake] Missing Tab WebSocket token in handshake request");
+            log.warn("[beforeHandshake] Missing Tab WebSocket token in handshake request. URI={}", request.getURI());
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             return false;
         }
 
         if (!jwtUtil.validateToken(tabWebSocketToken)) {
-            log.warn("[beforeHandshake] Invalid Tab WebSocket token");
+            log.warn("[beforeHandshake] Invalid Tab WebSocket token. URI={}", request.getURI());
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             return false;
         }
 
-        if (webSocketSessionCoordinator.hasSession(tabWebSocketToken)) {
-            log.warn("🟠 중복 WebSocket 연결 시도 감지 (새로운 세션 연결 요청 중단). tabWebSocketToken={}", tabWebSocketToken);
-            response.setStatusCode(HttpStatus.CONFLICT);
-            return false;
-        }
-
+        String clientId = getClientId(request);
         if (clientId == null || clientId.isBlank()) {
-            log.warn("[beforeHandshake] Missing or empty Client ID in handshake request. URI: {}", request.getURI());
+            log.warn("[beforeHandshake] Missing or empty Client ID in handshake request. URI={}", request.getURI());
             response.setStatusCode(HttpStatus.BAD_REQUEST);
             return false;
         }
 
-        attributes.put(WEBSOCKET_TOKEN_KEY, tabWebSocketToken);
-        attributes.put(CLIENT_ID_KEY, clientId);
+        String tabId = getTabId(request);
+        Long userId = jwtUtil.getUserIdFromToken(tabWebSocketToken);
+        if (tabId == null || tabId.isBlank()) {
+            log.warn("[beforeHandshake] Missing or empty Tab ID in handshake request. URI={}", request.getURI());
+            response.setStatusCode(HttpStatus.BAD_REQUEST);
+            return false;
+        }
+
+        if (webSocketSessionCoordinator.hasSession(tabId)) {
+            log.warn("🟠 중복 WebSocket 연결 시도 감지 (새로운 세션 연결 요청 중단). userId={}, URI={}", userId, request.getURI());
+            response.setStatusCode(HttpStatus.CONFLICT);
+            return false;
+        }
+
         attributes.put(USER_ID_KEY, userId);
-
-        log.info("[beforeHandshake] Valid tabWebSocketToken={}", tabWebSocketToken);
-
+        attributes.put(CLIENT_ID_KEY, clientId);
+        attributes.put(TAB_ID_KEY, tabId);
+        attributes.put(WEBSOCKET_TOKEN_KEY, tabWebSocketToken);
         return true;
     }
 
@@ -84,6 +89,14 @@ public class WebSocketAuthHandshakeInterceptor implements HandshakeInterceptor {
                 .build()
                 .getQueryParams()
                 .getFirst(CLIENT_ID_KEY);
+    }
+
+    private String getTabId(ServerHttpRequest request) {
+        return UriComponentsBuilder
+                .fromUri(request.getURI())
+                .build()
+                .getQueryParams()
+                .getFirst(TAB_ID_KEY);
     }
 
     @Override
