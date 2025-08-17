@@ -2,8 +2,8 @@ package com.gameet.global.config.websocket.handler;
 
 import com.gameet.common.enums.AlertLevel;
 import com.gameet.common.service.DiscordNotifier;
-import com.gameet.global.config.websocket.interceptor.WebSocketAuthHandshakeInterceptor;
 import com.gameet.global.config.websocket.manager.WebSocketSessionCoordinator;
+import com.gameet.global.dto.websocket.WebSocketSessionInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.web.socket.CloseStatus;
@@ -30,39 +30,34 @@ public class CustomStompErrorHandler extends WebSocketHandlerDecorator {
     @Override
     public void handleTransportError(@NotNull WebSocketSession session,
                                      @NotNull Throwable exception) throws Exception {
-        String userId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.USER_ID_KEY).toString();
-
+        WebSocketSessionInfo info = WebSocketSessionInfo.of(session);
         if (isClosedChannelException(exception)) {
-            log.warn("🔴 비정상적인 채널 닫힘 감지(ClosedChannelException). userId={}, sessionId={}", userId, session.getId());
+            log.warn("🔴 비정상적인 채널 닫힘 감지(ClosedChannelException). {}", info);
         } else {
-            log.error("🔴 WebSocket 전송 오류 발생. userId={}, sessionId={}", userId, session.getId(), exception);
+            log.error("🔴 WebSocket 전송 오류 발생. {}", info, exception);
         }
         super.handleTransportError(session, exception);
     }
 
     @Override
     public void afterConnectionClosed(@NotNull WebSocketSession session, CloseStatus closeStatus) throws Exception {
-        String tabWebSocketToken = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.WEBSOCKET_TOKEN_KEY).toString();
-
-        String userId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.USER_ID_KEY).toString();
-        String clientId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.CLIENT_ID_KEY).toString();
-
+        WebSocketSessionInfo info = WebSocketSessionInfo.of(session);
         if (closeStatus.getCode() != CloseStatus.NORMAL.getCode()) {
-            log.warn("🔴 비정상적인 WebSocket 연결 종료. userId={}, clientId={}, sessionId={}, tabWebSocketToken={}, 상태: {}",
-                    userId, clientId, session.getId(), tabWebSocketToken, closeStatus);
+            log.warn("🔴 비정상적인 WebSocket 연결 종료. {}, closeStatus={}", info, closeStatus);
 
             String title = "🔴 WebSocket 세션 비정상 종료 감지";
             String description = String.format("""
                     - userId=%s
                     - clientId=%s
+                    - tabId=%s
                     - sessionId=%s
                     - tabWebSocketToken=%s
                     """,
-                    userId, clientId, session.getId(), tabWebSocketToken
+                    info.userId(), info.clientId(), info.tabId(), session.getId(), info.tabWebSocketToken()
             );
             discordNotifier.send(title, description, AlertLevel.CRITICAL);
         } else {
-            log.info("🟢 WebSocket 연결 정상 종료. userId={}, clientId={}, sessionId={}", userId, clientId, session.getId());
+            log.info("🟢 WebSocket 연결 정상 종료. {}", info);
         }
 
         webSocketSessionCoordinator.closeSession(session);

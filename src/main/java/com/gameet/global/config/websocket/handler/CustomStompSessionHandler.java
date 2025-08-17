@@ -1,7 +1,7 @@
 package com.gameet.global.config.websocket.handler;
 
-import com.gameet.global.config.websocket.interceptor.WebSocketAuthHandshakeInterceptor;
 import com.gameet.global.config.websocket.manager.WebSocketSessionCoordinator;
+import com.gameet.global.dto.websocket.WebSocketSessionInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketSession;
@@ -22,10 +22,8 @@ public class CustomStompSessionHandler extends WebSocketHandlerDecorator {
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         webSocketSessionCoordinator.registerSession(session);
 
-        String userId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.USER_ID_KEY).toString();
-        String clientId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.CLIENT_ID_KEY).toString();
-        String tabWebSocketToken = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.WEBSOCKET_TOKEN_KEY).toString();
-        log.info("🟢 WebSocket 세션 등록. userId={}, clientId={}, sessionId={}, tabWebSocketToken={}", userId, clientId, session.getId(), tabWebSocketToken);
+        WebSocketSessionInfo info = WebSocketSessionInfo.of(session);
+        log.info("🟢 WebSocket 세션 등록. {}", info);
 
         super.afterConnectionEstablished(session);
     }
