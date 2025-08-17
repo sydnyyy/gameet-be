@@ -25,7 +25,7 @@ public class WebSocketSessionCoordinator {
         webSocketSessionRegistry.closeSessionsOnLogout(userId);
     }
 
-    public boolean hasSession(String tabWebSocketToken) {
-        return webSocketSessionRegistry.hasSession(tabWebSocketToken);
+    public boolean hasSession(String tabId) {
+        return webSocketSessionRegistry.hasSession(tabId);
     }
 }

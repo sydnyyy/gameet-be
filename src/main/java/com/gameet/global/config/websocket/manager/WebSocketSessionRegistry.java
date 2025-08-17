@@ -19,9 +19,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WebSocketSessionRegistry {
 
     private final Map<Long, Set<String>> userClients = new ConcurrentHashMap<>();  // { userId, clientId }
-    private final Map<String, Set<String>> clientTabTokens = new ConcurrentHashMap<>();  // { clientId, browserTabToken }
-    private final Map<String, WebSocketSession> browserTabSessions = new ConcurrentHashMap<>();  // { browserTabToken, session }
-    private final Set<String> closingSessionTokens = ConcurrentHashMap.newKeySet();
+    private final Map<String, Set<String>> clientTabIds = new ConcurrentHashMap<>();  // { clientId, tabId }
+    private final Map<String, WebSocketSession> browserTabSessions = new ConcurrentHashMap<>();  // { tabId, session }
+    private final Set<String> closingSessions = ConcurrentHashMap.newKeySet();
 
     private final WebSocketSessionCloser webSocketSessionCloser;
     private final DiscordNotifier discordNotifier;
@@ -36,14 +36,14 @@ public class WebSocketSessionRegistry {
     synchronized void register(WebSocketSession session) {
         Long userId = (Long) session.getAttributes().get(WebSocketAuthHandshakeInterceptor.USER_ID_KEY);
         String clientId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.CLIENT_ID_KEY).toString();
-        String tabWebSocketToken = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.WEBSOCKET_TOKEN_KEY).toString();
+        String tabId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.TAB_ID_KEY).toString();
 
-        WebSocketSession existingSession = browserTabSessions.get(tabWebSocketToken);
+        WebSocketSession existingSession = browserTabSessions.get(tabId);
         if (existingSession != null) {
-            log.warn("🟠 중복 WebSocket 연결 감지. userId={}, clientId={}, existingSession={}, newSession={}, tabWebSocketToken={}",
-                    userId, clientId, existingSession.getId(), session.getId(), tabWebSocketToken);
+            log.warn("🟠 중복 WebSocket 연결 감지. userId={}, clientId={}, existingSession={}, newSession={}, tabId={}",
+                    userId, clientId, existingSession.getId(), session.getId(), tabId);
 
-            browserTabSessions.remove(tabWebSocketToken);
+            browserTabSessions.remove(tabId);
             if(!webSocketSessionCloser.tryCloseSession(existingSession, 4400, "Duplicate WebSocket connection")) {
                 log.error("🟠 기존 세션 {} 종료 실패. (새로운 세션 등록은 계속 진행)", existingSession.getId());
             }
@@ -53,42 +53,42 @@ public class WebSocketSessionRegistry {
                     """
                     - userId=%s
                     - clientId=%s
+                    - tabId=%s
                     - existingSession=%s 종료
                     - newSession=%s 관리 시작
-                    - tabWebSocketToken=%s
                     """,
-                    userId, clientId, existingSession.getId(), session.getId(), tabWebSocketToken
+                    userId, clientId, tabId, existingSession.getId(), session.getId()
                     );
             discordNotifier.send(title, description, AlertLevel.CRITICAL);
         }
 
-        browserTabSessions.put(tabWebSocketToken, session);
-        clientTabTokens.computeIfAbsent(clientId, clientIdKey -> ConcurrentHashMap.newKeySet()).add(tabWebSocketToken);
+        browserTabSessions.put(tabId, session);
+        clientTabIds.computeIfAbsent(clientId, clientIdKey -> ConcurrentHashMap.newKeySet()).add(tabId);
         userClients.computeIfAbsent(userId, userIdKey -> ConcurrentHashMap.newKeySet()).add(clientId);
     }
 
     synchronized void unregisterSession(WebSocketSession session) {
-        if (closingSessionTokens.contains(session.getId())) {
-            closingSessionTokens.remove(session.getId());
+        if (closingSessions.contains(session.getId())) {
+            closingSessions.remove(session.getId());
             return;
         }
 
         Long userId = (Long) session.getAttributes().get(WebSocketAuthHandshakeInterceptor.USER_ID_KEY);
         String clientId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.CLIENT_ID_KEY).toString();
-        String tabWebSocketToken = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.WEBSOCKET_TOKEN_KEY).toString();
+        String tabId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.TAB_ID_KEY).toString();
 
-        browserTabSessions.remove(tabWebSocketToken);
+        browserTabSessions.remove(tabId);
 
-        clientTabTokens.computeIfPresent(clientId, (clientIdKey, tabTokens) -> {
-            tabTokens.remove(tabWebSocketToken);
+        clientTabIds.computeIfPresent(clientId, (clientIdKey, tabIds) -> {
+            tabIds.remove(tabId);
 
-            if (tabTokens.isEmpty()) {
+            if (tabIds.isEmpty()) {
                 userClients.computeIfPresent(userId, (userIdKey, clientIds) -> {
                     clientIds.remove(clientId);
                     return clientIds.isEmpty() ? null : clientIds;
                 });
             }
-            return tabTokens.isEmpty() ? null : tabTokens;
+            return tabIds.isEmpty() ? null : tabIds;
         });
     }
 
@@ -97,13 +97,13 @@ public class WebSocketSessionRegistry {
         if (clientIdsToRemove != null && !clientIdsToRemove.isEmpty()) {
             clientIdsToRemove
                     .forEach(clientId -> {
-                        Set<String> tabTokensToRemove = clientTabTokens.remove(clientId);
-                        if (tabTokensToRemove != null && !tabTokensToRemove.isEmpty()) {
-                            tabTokensToRemove
-                                    .forEach(browserTabToken -> {
-                                        WebSocketSession session = browserTabSessions.remove(browserTabToken);
+                        Set<String> tabIdsToRemove = clientTabIds.remove(clientId);
+                        if (tabIdsToRemove != null && !tabIdsToRemove.isEmpty()) {
+                            tabIdsToRemove
+                                    .forEach(tabId -> {
+                                        WebSocketSession session = browserTabSessions.remove(tabId);
                                         if (session != null && session.isOpen()) {
-                                            closingSessionTokens.add(session.getId());
+                                            closingSessions.add(session.getId());
                                             webSocketSessionCloser.tryCloseSession(session, CloseStatus.NORMAL);
                                         }
                                     });
@@ -112,7 +112,7 @@ public class WebSocketSessionRegistry {
         }
     }
 
-    boolean hasSession(String tabWebSocketToken) {
-        return browserTabSessions.containsKey(tabWebSocketToken);
+    boolean hasSession(String tabId) {
+        return browserTabSessions.containsKey(tabId);
     }
 }
