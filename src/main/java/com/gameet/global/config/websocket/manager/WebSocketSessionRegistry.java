@@ -40,9 +40,8 @@ public class WebSocketSessionRegistry {
 
         WebSocketSession existingSession = browserTabSessions.get(tabWebSocketToken);
         if (existingSession != null) {
-            log.warn("🟠 중복 WebSocket 연결 감지. tabWebSocketToken={}, sessionId={} -> {}",
-                    tabWebSocketToken,
-                    existingSession.getId(), session.getId());
+            log.warn("🟠 중복 WebSocket 연결 감지. userId={}, clientId={}, existingSession={}, newSession={}, tabWebSocketToken={}",
+                    userId, clientId, existingSession.getId(), session.getId(), tabWebSocketToken);
 
             browserTabSessions.remove(tabWebSocketToken);
             if(!webSocketSessionCloser.tryCloseSession(existingSession, 4400, "Duplicate WebSocket connection")) {
@@ -50,9 +49,16 @@ public class WebSocketSessionRegistry {
             }
 
             String title = "🟠 중복 WebSocket 연결 감지";
-            String description = "- tabWebSocketToken=" + tabWebSocketToken + "\n"
-                    + "- Session 변경 " + existingSession.getId() + " -> " + session.getId() + "\n"
-                    + "- 기존 세션 " + existingSession.getId() + " 종료";
+            String description = String.format(
+                    """
+                    - userId=%s
+                    - clientId=%s
+                    - existingSession=%s 종료
+                    - newSession=%s 관리 시작
+                    - tabWebSocketToken=%s
+                    """,
+                    userId, clientId, existingSession.getId(), session.getId(), tabWebSocketToken
+                    );
             discordNotifier.send(title, description, AlertLevel.CRITICAL);
         }
 

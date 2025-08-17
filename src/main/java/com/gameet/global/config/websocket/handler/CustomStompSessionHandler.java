@@ -20,10 +20,12 @@ public class CustomStompSessionHandler extends WebSocketHandlerDecorator {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        String browserTabToken = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.WEBSOCKET_TOKEN_KEY).toString();
         webSocketSessionCoordinator.registerSession(session);
 
-        log.info("🟢 WebSocket 세션 등록. browserTabToken={}, sessionId={}", browserTabToken, session.getId());
+        String userId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.USER_ID_KEY).toString();
+        String clientId = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.CLIENT_ID_KEY).toString();
+        String tabWebSocketToken = session.getAttributes().get(WebSocketAuthHandshakeInterceptor.WEBSOCKET_TOKEN_KEY).toString();
+        log.info("🟢 WebSocket 세션 등록. userId={}, clientId={}, sessionId={}, tabWebSocketToken={}", userId, clientId, session.getId(), tabWebSocketToken);
 
         super.afterConnectionEstablished(session);
     }
